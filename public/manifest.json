@@ -1,0 +1,51 @@
+{
+    "manifest_version": 2,
+    "name": "Lemon Chrome Bot",
+    "description": "크롬과 소켓 통신하여, 스마트한 브라우저 만들기!",
+    "version": "1.0.0",
+    "permissions": [
+        "tabs",
+        "*://*/*",
+        "contextMenus",
+        "background",
+        "notifications",
+        "tabs",
+        "activeTab"
+    ],
+    "background": {
+        "scripts": [
+            "js/bootloader.js",
+            "js/socket.io.js",
+            "js/background.js"
+        ],
+        "persistent": true
+    },
+    "icons": { 
+        "16": "image/icon.png",
+        "48": "image/icon.png",
+        "128": "image/icon.png" 
+    },
+    "browser_action": {
+        "default_icon": { 
+            "19": "image/icon.png", 
+            "38": "image/icon.png" 
+        },
+        "default_popup": "index.html",
+        "default_title": "Open the popup"
+    },
+    "content_scripts": [{
+        "all_frames": true,
+        "matches": ["http://*/*", "https://*/*"],
+        "js": ["js/bootloader.js"],
+        "run_at": "document_start"
+    },{
+        "all_frames": true,
+        "matches": ["http://*/*", "https://*/*"],
+        "js": ["js/jquery-3.3.1.slim.min.js", "js/content.js"],
+        "run_at": "document_end"
+    }],
+    "content_security_policy": "script-src 'self' https://ssl.google-analytics.com; object-src 'self'",
+    "web_accessible_resources": [
+        "js/bootloader.js", "js/injected.js", "js/jquery-3.3.1.slim.min.js"
+    ]
+}

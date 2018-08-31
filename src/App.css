@@ -1,0 +1,347 @@
+.App {
+  text-align: center;
+}
+
+.App-logo {
+  animation: App-logo-spin infinite 20s linear;
+  height: 80px;
+}
+
+.App-header {
+  background-color: #222;
+  height: 150px;
+  padding: 20px;
+  color: white;
+}
+
+.App-title {
+  font-size: 1.5em;
+}
+
+.App-intro {
+  font-size: large;
+}
+
+@keyframes App-logo-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+body {
+	width: 550px;
+	padding: 77px 0 0 0;
+}
+
+#header {
+	position: fixed;
+	top: 0;
+	left: 0;
+	width: 100%;
+	box-shadow: none
+}
+
+#header .btn {
+	position: absolute;
+	top: 27px;
+	height: 24px;
+	width: 24px;
+	background-size: 100%;
+	border: 1px dotted transparent;
+	text-decoration: none;
+	outline: none;
+	cursor: pointer
+}
+
+#header .btn:focus {
+	border-color: var(--main-color)
+}
+
+#btn_options {
+	display: block;
+	right: 25px;
+	/* background: url(../img/picto_dots48.png) 0 0 no-repeat */
+}
+
+#btn_download {
+	display: none;
+	right: 63px;
+	/* background: url(../img/picto_download48.png) 0 0 no-repeat */
+}
+
+#status {
+	position: absolute;
+	z-index: 205;
+	top: 27px;
+	right: 101px;
+	list-style: none;
+	width: 110px;
+	padding: 0;
+	margin: 0;
+	text-align: left;
+}
+
+#status li {
+	position: relative;
+	z-index: 205;
+	display: block;
+	font-family: "Courier New", Courier, monospace;
+	font-size: 9px;
+	line-height: 15px;
+	padding: 0;
+	margin: 0;
+	vertical-align: middle;
+	color: #777
+}
+
+#status li+li {
+	z-index: 204
+}
+
+#status li .bullet {
+	display: inline-block;
+	height: 7px;
+	width: 7px;
+	margin: 0 5px 2px 0;
+	border-radius: 10px;
+	background: #AAA;
+	vertical-align: middle
+}
+
+#status li.status_success .bullet {
+	background-color: var(--green-color)
+}
+
+#status li.status_error .bullet {
+	background-color: var(--red-color)
+}
+
+#status li .tooltip {
+	visibility: hidden;
+	opacity: 0;
+	position: absolute;
+	z-index: 210;
+	top: 100%;
+	left: 50%;
+	font-size: 9px;
+	line-height: 13px;
+	width: 120px;
+	padding: 7px 10px;
+	margin: 5px 0 0 -70px;
+	color: #fff;
+	border-radius: 3px;
+	background-color: var(--main-color);
+	text-align: center;
+	box-shadow: 0 1px 1px rgba(0, 0, 0, .25);
+	transition-property: opacity;
+	transition-duration: 0.25s
+}
+
+#status li .tooltip::after {
+	content: "";
+	visibility: hidden;
+	position: absolute;
+	z-index: 210;
+	bottom: 100%;
+	left: 50%;
+	width: 0;
+	margin: 0 -15px 0 0;
+	border: 5px solid;
+	border-color: transparent transparent var(--main-color) transparent
+}
+
+#status li.status_error:hover .tooltip,
+#status li.status_error:hover .tooltip::after {
+	display: inline-block;
+	visibility: visible;
+	opacity: .9
+}
+
+section {
+	padding: 5px 0 0 0!important;
+	margin: 0
+}
+
+section article {
+	padding: 0;
+	margin: 0
+}
+
+section article#tmaVars, section article#tmaNovar, section article#tmaNotset, section article#tmaSetup, section article#tmaNowrong {
+	display: none
+}
+
+.options section article {
+	display: none!important
+}
+
+section article#tmaNowrong {
+	padding: 10px 25px 0 25px;
+	margin: 0 0 25px 0!important
+}
+
+.options section article#tmaSetup {
+	display: block!important
+}
+
+#vars {
+	position: relative;
+}
+
+#tmaTableRows {
+	position: fixed;
+	top: 82px
+}
+
+#tmaTableRows+* {
+	margin-top: 26px;
+}
+
+section article .inner .table {
+	width: 100%;
+	border: none;
+	border-collapse: collapse;
+	border-spacing: 0;
+	background: #FFF;
+	margin: 0
+}
+
+section article .inner .table tr th {
+	width: 330px
+}
+
+section article .inner .table tr th:first-child {
+	width: 40px;
+}
+
+section article .inner .table.table-expected tr th+th {
+	width: 217px;
+}
+
+section article .inner .table tbody tr.selected+tr td {
+	border-color: rgba(255, 255, 0, .5)!important
+}
+
+section article .inner .table tr th,
+section article .inner .table tr td {
+	font-family: "Courier New", Verdana;
+	text-align: left
+}
+
+section article .inner .table tr th {
+	font-weight: 400;
+	font-size: 12px;
+	line-height: 16px;
+	padding: 5px;
+	color: #FFF;
+	background: #519cdc
+}
+
+section article .inner .table tr th label {
+	position: relative;
+	display: inline-block;
+	vertical-align: middle;
+	height: 16px;
+	padding: 0;
+	margin: 0 0 0 0;
+	overflow: hidden;
+	cursor: pointer
+}
+
+section article .inner .table tr th label input {
+	position: absolute;
+	left: -50px
+}
+
+section article .inner .table tr th label input+span {
+	display: none;
+	height: 16px;
+	width: 12px;
+	margin: 0 0 0 5px;
+	/* background: url(../img/picto_sort16.png) 0 0 no-repeat; */
+	vertical-align: top;
+	filter: grayscale(100%);
+	opacity: .5;
+}
+
+section article .inner .table tr th label:hover input+span {
+	display: inline-block
+}
+
+section article .inner .table tr th label input:checked+span {
+	display: inline-block
+}
+
+section article .inner .table tr th label input:checked+span {
+	filter: grayscale(0%);
+	opacity: 1
+}
+
+section article .inner .table tr td {
+	font-size: 10px;
+	line-height: 16px;
+	padding: 4px 5px;
+	border-top: 1px solid #F3F3F3;
+	transition-property: background-color, border-color;
+	transition-duration: 0.2s
+}
+
+section article .inner .table tr td:first-child {
+	text-align: left
+}
+
+section article .inner .table tr:nth-child(odd) td {
+	background: #FAFAFA
+}
+
+section article .inner .table tr:hover td {
+	border-color: #e6effa;
+	background: #e6effa
+}
+
+section article .inner .table tr:hover+tr td {
+	border-color: #e6effa
+}
+
+section article .inner .table tr td:first-child {
+	width: 34px
+}
+
+section article .inner .table .tr-valid td {
+	color: #777
+}
+
+section article .inner .table .tr-empty td {
+	color: inherit;
+	font-style: italic;
+	text-align: center
+}
+
+section article .inner .table .tr-error td {
+	color: var(--red-color)
+}
+
+section article .inner .table tr td:first-child>div {
+	width: 38px!important;
+}
+
+section article .inner .table tr td>div {
+	height: 16px;
+	line-height: 17px;
+	width: 323px;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+section article .inner .table.table-expected tr td>div {
+	width: 207px;
+}
+
+section article .inner .table .tr-valid td+td+td+td>div:before {
+	content: ' ';
+	display: inline-block;
+	height: 13px;
+	width: 16px;
+	/* background: url(../img/picto_check16.png) 0 0 no-repeat; */
+	background-size: 100%;
+}
