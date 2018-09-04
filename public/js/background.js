@@ -1,57 +1,101 @@
-chrome.runtime.onMessage.addListener(function(message, sender, sendResponse) {
-    console.log('message =', message);
-    console.log('sender =', sender);            // {id: "cddemoiidgdpbclgfjgflmphkiajkifh", url: "https://github.com/meeeejin/srtmacro/blob/master/manifest.json", tab: {…}, frameId: 0}
-    var sid = sender && sender.id || '';
-    var $tab = sender && sender.tab || {};
+/**
+ * Background Worker
+ *
+ * 
+ * author: Steve <steve@lemoncloud.io>
+ * date : 2018-08-31
+ *
+ * Copyright (C) 2018 LemonCloud Co Ltd. - All Rights Reserved.
+ */
+//! Main Function Body
+(function (window) {
+    const NS = 'BG';
 
-    // // Messages from content scripts should have sender.tab set
-    // if (sender.tab) {
-    //     var tabId = sender.tab.id;
-    //     if (tabId in connections) {
-    //         connections[tabId].postMessage(request);
-    //     } else {
-    //         console.log("Tab not found in connection list.");
-    //     }
-    // } else {
-    //     console.log("sender.tab not defined.");
-    // }
+    const chrome = window.chrome;
+    if (!chrome) throw new Error('chrome is required!');
 
-    // if (0 && $tab.id){
-    //     doSendMessage($tab.id)
-    // } else if (sendResponse){
-    //     setTimeout(function(){
-    //         sendResponse({text: 'hello sender!'})
-    //     }, 2000);
-    //     return true;
-    // }
-});
+    //! message via content.js
+    chrome.runtime.onMessage.addListener(function(message, sender, sendResponse) {
+        message = message || {};
+        sender = sender || {};
+        _inf(NS, '! onMessage()... ');
+        _log(NS, '> message =', message);           // {type, id, ...}
+        // _log(NS, '> sender =', sender);             // {id: "cddemoiidgdpbclgfjgflmphkiajkifh", url: "https://github.com/meeeejin/srtmacro/blob/master/manifest.json", tab: {…}, frameId: 0}
+        const type  = message.type||'';
+        const sid   = sender.id || '';
+        const url   = sender.url || '';
+        const fid   = sender.frameId || '';             // if exists, then it must be internal frame like iframe.
+        const $tab  = sender.tab || {};
+        _log(NS, '>> sender-id =', sid);
+        _log(NS, '>> tab-id =', $tab.id, ', frame-id=', fid);
+    
+        // // Messages from content scripts should have sender.tab set
+        // if (sender.tab) {
+        //     var tabId = sender.tab.id;
+        //     if (tabId in connections) {
+        //         connections[tabId].postMessage(request);
+        //     } else {
+        //         console.log("Tab not found in connection list.");
+        //     }
+        // } else {
+        //     console.log("sender.tab not defined.");
+        // }
 
-//! for dev-tool: add `"devtools_page": "devtools.html",` in manifest.json
-var connections = {};
-chrome.runtime.onConnect.addListener(function (port) {
-    // Listen to messages sent from the DevTools page
-    port.onMessage.addListener(function (request) {
-        console.log('incoming message from dev tools page');
-        // Register initial connection
-        if (request.name == 'init') {
-            connections[request.tabId] = port;
-            port.onDisconnect.addListener(function () {
-                delete connections[request.tabId];
-            });
-            return;
-        }
+        // if (0 && $tab.id){
+        //     doSendMessage($tab.id)
+        // } else if (sendResponse){
+        //     setTimeout(function(){
+        //         sendResponse({text: 'hello sender!'})
+        //     }, 2000);
+        //     return true;
+        // }
     });
-});
+    
+    //! for dev-tool: add `"devtools_page": "devtools.html",` in manifest.json
+    var connections = {};
+    chrome.runtime.onConnect.addListener(function (port) {
+        // Listen to messages sent from the DevTools page
+        port.onMessage.addListener(function (request) {
+            console.log('incoming message from dev tools page');
+            // Register initial connection
+            if (request.name == 'init') {
+                connections[request.tabId] = port;
+                port.onDisconnect.addListener(function () {
+                    delete connections[request.tabId];
+                });
+                return;
+            }
+        });
+    });
+    
+    function doSendMessage(tid, message){
+        message = message || {content: "message"};
+        _log(NS, 'send['+tid+'] =', message);
+        chrome.tabs.sendMessage(tid, message, function(response) {
+            if(response) {
+                _log(NS, '! tab['+tid+'].res =', response);
+            }
+        });    
+    }
 
-function doSendMessage(tid, message){
-    message = message || {content: "message"};
-    console.log('send['+tid+'] =', message);
-    chrome.tabs.sendMessage(tid, message, function(response) {
-        if(response) {
-            console.log('! tab['+tid+'].res =', response);
-        }
-    });    
-}
+    //! socket-client.
+    if(WebSocketClient)
+    {
+        _log(NS, '! WebSocketClient()..');
+        var $WSC = new WebSocketClient();
+        const WS_URL = 'ws://localhost:8080';
+        //! open to server
+        // $WSC.open(WS_URL);
+    }
+
+    //! hello() to test.
+    window.hello = function(name){
+        name = name||'hello!'
+        _log(NS, `hello ${name}!`);
+    }
+
+})(window||global);
+
 
 /**
  * class: WebSocketClient
@@ -174,15 +218,4 @@ WebSocketClient.prototype.oncommand = function(cmd, msg){
     console.log('WebSocketClient: command!');
     console.log('> cmd =', cmd, ', msg=', msg);
 }
-
-
-//! socket-client.
-if(WebSocketClient)
-{
-    console.log('! WebSocketClient()..');
-    var $WSC = new WebSocketClient();
-    const WS_URL = 'ws://localhost:8080';
-
-    //! open to server
-    $WSC.open(WS_URL);
-}
+;

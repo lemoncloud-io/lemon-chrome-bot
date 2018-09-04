@@ -18,28 +18,50 @@
 	var ROOT_NAME = _name || '$LEMON_BOOT';
     //! load configuration.
     var process = typeof _root.process != 'undefined' ? _root.process : null;
-	var STAGE = process && process.env && process.env.STAGE || '';
+	var STAGE = process && process.env && process.env.STAGE || 'local';
     var LC = (STAGE === 'local');
     var TS = (STAGE !== 'prod' );
     var DUM = function(){};
+
+    var GREEN = [
+        'background: white; color: green; display: block;'
+        // 'background: linear-gradient(#D33106, #571402)'
+        // , 'border: 1px solid #3E0E02'
+        // , 'color: white'
+        // , 'display: block'
+        // , 'text-shadow: 0 1px 0 rgba(0, 0, 0, 0.3)'
+        // , 'box-shadow: 0 1px 0 rgba(255, 255, 255, 0.4) inset, 0 5px 3px -5px rgba(0, 0, 0, 0.5), 0 -13px 5px -10px rgba(255, 255, 255, 0.4) inset'
+        // , 'line-height: 40px'
+        // , 'text-align: center'
+        // , 'font-weight: bold'
+    ].join(';');
+    var BLUE = [
+        'background: blue; color: white; display: block;'
+    ].join(';');
+    var RED = [
+        'background: red; color: white; display: block;'
+    ].join(';');
 
 	//! common function for logging.
 	var $console = {thiz: console||{}, log: console.log||DUM, error: console.error||DUM, auto_ts: TS, auto_color: LC};
 	var _log = function () {
 		var args = $console.auto_ts && !Array.isArray(arguments) && Array.prototype.slice.call(arguments) || arguments;
 		if ($console.auto_color) args.unshift("\x1b[0m"), $console.auto_ts && args.unshift(_ts(), 'L'), args.unshift("\x1b[32m");       // BLUE
+		if ($console.auto_color) args.unshift(GREEN), args.unshift('%c '+($console.auto_ts && _ts() || '')+ ' L');       // BLUE
 		else $console.auto_ts && args.unshift(_ts(), 'L');
 		return $console.log.apply($console.thiz, args)
 	}
 	var _inf = function () {
 		var args = $console.auto_ts && !Array.isArray(arguments) && Array.prototype.slice.call(arguments) || arguments;
-		if ($console.auto_color) args.unshift(""), args.push("\x1b[0m"), $console.auto_ts && args.unshift(_ts(), 'I'), args.unshift("\x1b[33m");       	// YELLOW in line.
+		// if ($console.auto_color) args.unshift(""), args.push("\x1b[0m"), $console.auto_ts && args.unshift(_ts(), 'I'), args.unshift("\x1b[33m");       	// YELLOW in line.
+		if ($console.auto_color) args.unshift(BLUE), args.unshift('%c '+($console.auto_ts && _ts() || '')+ ' L');       // BLUE
 		else $console.auto_ts && args.unshift(_ts(), 'I');
 		return $console.log.apply($console.thiz, args)
 	}
 	var _err = function () {
 		var args = $console.auto_ts && !Array.isArray(arguments) && Array.prototype.slice.call(arguments) || arguments;
-		if ($console.auto_color) args.unshift("\x1b[0m"), $console.auto_ts && args.unshift(_ts(), 'E'), args.unshift("\x1b[31m");       // RED
+		// if ($console.auto_color) args.unshift("\x1b[0m"), $console.auto_ts && args.unshift(_ts(), 'E'), args.unshift("\x1b[31m");       // RED
+		if ($console.auto_color) args.unshift(RED), args.unshift('%c '+($console.auto_ts && _ts() || '')+ ' L');       // BLUE
 		else $console.auto_ts && args.unshift(_ts(), 'E');
 		return $console.error.apply($console.thiz, args)
 	}

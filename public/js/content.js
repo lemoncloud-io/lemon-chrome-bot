@@ -40,21 +40,21 @@ function injectJs(srcFile, id) {
     
         //! load injected script. (do expose command)
         injectJs(chrome.extension.getURL('js/injected.js'), ID);
-    
-        // chrome.extension.sendMessage({type: 'document.ready'}, function(data) { 
-        //     console.log('! rback.es =', data);
-        // });
-        // chrome.runtime.sendMessage({type: 'document.ready'}, function(response) { 
-        //     _inf(NS, '! cont.res =', response);
-        //     _inf(NS, '> #item-type =', $('#item-type').val())
 
-        //     //NOTE! 아래와 같은 방법으로 화면 변경 가능함. (BUT 스크립트 호출은 안됨)
-        //     // $('#item-type').val('HAHAHA');                              //INFO! - html 변경은 가능한듯.
-        //     // _inf(NS, '> SITE_CODE=', typeof SITE_CODE, SITE_CODE);      //WARN! - 이건 에러 발생함.
-        // });
+        //! send ready.
+        const msg = {type: 'document.ready', id: ID, href: location.href};
+        chrome.runtime.sendMessage(msg, function(res) { 
+            _inf(NS, '! cont.res =', res);
+        });
     })
+    //! send unload.
+    $(window).on('unload', function(){
+        _log(NS, '! window.unload..');
+        const msg = {type: 'window.unload', id: ID, href: location.href};
+        chrome.runtime.sendMessage(msg);
+    });
 
-    // message between content.js <-> background.js
+    // message via background.js
     chrome.runtime.onMessage.addListener(function(message, sender, sendResponse) {  
         _log(NS, 'chrome.onMessage()... message=', message);
         if(message.content) {
