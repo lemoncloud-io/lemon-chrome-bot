@@ -4,6 +4,9 @@
  * 
  * Will be loaded at `document_end`.
  * 
+ * 
+ * 
+ * 
  * author: Steve <steve@lemoncloud.io>
  * date : 2018-08-31
  *
@@ -20,34 +23,11 @@ function injectJs(srcFile) {
     const NS = 'content';
 
     _log(NS, 'INFO! --------------- loading.');
-    // In ContentScript.js
-    // chrome.extension.onMessage.addListener(function(message, sender, sendResponse) {  
-    chrome.runtime.onMessage.addListener(function(message, sender, sendResponse) {  
-        _log(NS, 'chrome.onMessage()... message=', message);
-        if(message.content) {
-            sendResponse({content: "response message"});
-            return true; // This is required by a Chrome Extension
-        }
-    })
-    
-    // Via Inject.js.
-    window.addEventListener('message', function(event) {
-        // Only accept messages from same frame
-        if (event.source !== window) {
-            return;
-        }
-        _log(NS, 'window.on-message()... event=', event);
-      
-        var message = event.data;
-        _log(NS, '> message =', message);
-        
-        // Only accept messages that we know are ours
-        if (typeof message !== 'object' || message === null || !message.hello) {
-          return;
-        }
-        // chrome.runtime.sendMessage(message);
-    });
-    
+
+    //! prepare ID of self.
+    const ID = 11*10000 + Math.floor(Math.random()*10000);
+    _log(NS, '> ID =', ID);
+
     // DO ON DUCEMENT.READY()
     $(document).ready(function() {
         _log(NS, 'lemon ready!');
@@ -71,4 +51,59 @@ function injectJs(srcFile) {
         });
     })
 
+    // message between content.js <-> background.js
+    chrome.runtime.onMessage.addListener(function(message, sender, sendResponse) {  
+        _log(NS, 'chrome.onMessage()... message=', message);
+        if(message.content) {
+            sendResponse({content: "response message"});
+            return true; // This is required by a Chrome Extension
+        }
+    })
+    
+    // internal message broker to communicate with injected.js.
+    const INJ_BROKER = {
+        ID : 'IJ'+ID,
+        MAGIC_KEY : '#lemon-content',
+        NEXT_ID : 0,
+        onMessage: function(event){
+            // Only accept messages from same frame
+            if (!event || event.source !== window)    return;
+            const message = event.data || {};
+            _log(NS, '> message@'+(this.ID)+' =', message);
+            // Only if valid message type from this.
+            if (!message.mkey || !message.source) return;
+            _inf(NS, '! message@'+(this.ID)+' =', message);
+
+            //! For receiving message via injected.js (target must be "")
+            if (!message.target)
+            {
+                _log(NS, '>> cmd =', message.cmd);
+                //! send back to origin.
+                if (message.cmd == 'hello!'){
+                    const msg2 = Object.assign({}, message);
+                    msg2.source = this.ID,
+                    msg2.target = message.source;
+                    msg2.error = null;
+                    msg2.data = {name: 'content'};
+                    _log(NS, '>> send-back =', msg2);
+                    window.postMessage(msg2, '*');
+                }
+            }
+        },
+        postMessage: function(cmd, data, target){
+            cmd = cmd||'';
+            target = target||-1;
+            const message = {
+                id: this.NEXT_ID++,
+                mkey: this.MAGIC_KEY,
+                source: this.ID,
+                target: target,
+                cmd: cmd,
+            };
+            if (data) message.data = data;
+            window.postMessage(message, '*');
+        },
+    };
+    window.addEventListener('message', (event)=>INJ_BROKER.onMessage(event));
+        
 })(window||global);
