@@ -46,7 +46,7 @@
 	var $console = {thiz: console||{}, log: console.log||DUM, error: console.error||DUM, auto_ts: TS, auto_color: LC};
 	var _log = function () {
 		var args = $console.auto_ts && !Array.isArray(arguments) && Array.prototype.slice.call(arguments) || arguments;
-		if ($console.auto_color) args.unshift("\x1b[0m"), $console.auto_ts && args.unshift(_ts(), 'L'), args.unshift("\x1b[32m");       // BLUE
+		// if ($console.auto_color) args.unshift("\x1b[0m"), $console.auto_ts && args.unshift(_ts(), 'L'), args.unshift("\x1b[32m");       // BLUE
 		if ($console.auto_color) args.unshift(GREEN), args.unshift('%c '+($console.auto_ts && _ts() || '')+ ' L');       // BLUE
 		else $console.auto_ts && args.unshift(_ts(), 'L');
 		return $console.log.apply($console.thiz, args)
