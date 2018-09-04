@@ -11,41 +11,99 @@
  */
 //! Main Function Body
 (function (window) {
-    const NS = 'inject';
+    const NS = 'IJ';
 
     _log(NS, 'INFO! --------------- loading.');
-    _log(NS, '> jQuery =', typeof jQuery);
     _log(NS, '> href =', location && location.href || 'N/A');
 
+    //! catch self-id from script.id.
+    const getScriptID = function(){
+        const scripts = document.getElementsByTagName('script');
+        const len = scripts && scripts.length || 0;
+        for(var i=0; i<len; i++){
+            const $scr = scripts[i]||{};
+            const src = $scr.src||'';
+            const id = $scr.id||'';
+            if (src && src.indexOf('/js/injected.js') > 0) return id;
+        }
+        return '';
+    }
+    // window.getScriptID = getScriptID;
+
     //! prepare ID of self.
-    const ID = 12*10000 + Math.floor(Math.random()*10000);
+    const ID = getScriptID() || (12*10000 + Math.floor(Math.random()*10000));
     _log(NS, '> ID =', ID);
    
     // internal message broker to communicate with content.js.
     const MSG_BROKER = {
-        ID : 'MB'+ID,
-        MAGIC_KEY : '#lemon-injected',
-        NEXT_ID : 1,
+        ID : NS+ID,
+        MAGIC_KEY : '#lemon-injected',          // magic-key used for verification of reponse.
+        NEXT_ID : 1,                            // internal message counter.
+        HANDLERS : {},                          // map to handler for cmd.
         _CALLBACK : {},
         onMessage: function(event){
             // Only accept messages from same frame
-            if (!event || event.source !== window)    return;
+            // if (!event || event.source !== window)    return;
             const message = event.data || {};
-            _log(NS, '> message@'+(this.ID)+' =', message);
-            // Only if valid message type from this.
+            // _log(NS, '> message@'+(this.ID)+':', message);
+
+            //! Only if valid message type from this.
             if (!message.mkey || !message.source || !message.target) return;
+
             const id = message.id||0;
             const cmd = message.cmd||'';
             _inf(NS, '! message@'+(this.ID)+'/'+cmd+'/'+id+' =', message);
 
-            //! For receiving message.
-            if (message.target === this.ID)
+            //! For response message.
+            if (message.target === this.ID && message.mkey === this.MAGIC_KEY)
             {
                 const cb = this._CALLBACK[id];
+                this._CALLBACK[id] = undefined;
                 const err = message.error;
                 const data = message.data;
                 if (cb) cb(err, data);
-                delete this._CALLBACK[id];
+            }
+            //! For known command, do handle.
+            else if (message.target === this.ID && message.cmd)
+            {
+                //! prepare defualt response based on received message.
+                const response = (()=>{
+                    const msg2 = Object.assign({}, message);
+                    msg2.source = this.ID,
+                    msg2.target = message.source;
+                    msg2.error  = null;
+                    msg2.data   = null;
+                    return msg2;
+                })();
+
+                //! decode by cmd, and send response.
+                const handler = cmd && this.HANDLERS[cmd] || null;
+                handler && ((handler)=>{
+                    try {
+                        const ret = handler(message.data, message);
+                        if (ret && ret instanceof Promise){
+                            return ret
+                            .then(_ => {
+                                response.data = _;
+                                return response;
+                            })
+                            .catch(e => {
+                                _err(NS, '>> handle.ret.ERR!=', e);
+                                response.error = e;
+                                return response;
+                            })
+                            .then(res => {
+                                window.postMessage(response, '*');
+                                return res;
+                            })
+                        }
+                        response.data = ret;
+                    } catch(e) {
+                        _err(NS, '>> handle.ERR!=', e);
+                        response.error = e;
+                    }
+                    window.postMessage(response, '*');
+                })(handler);                
             }
         },
         postMessage: function(cmd, data, target){
@@ -75,14 +133,27 @@
                 //! timeout handler. (default in 5sec)
                 setTimeout(()=>{
                     if (this._CALLBACK[id]) reject(new Error('timeout'));
-                    delete this._CALLBACK[id];
+                    this._CALLBACK[id] = undefined;
                 }, 5000)
             })
         },
+        setMessageHandle: function(cmd, callback){
+            if (typeof callback == 'function'){
+                this.HANDLERS[cmd] = callback;
+            } else {
+                throw new Error('Invalid type:'+(typeof callback));
+            }
+        },
     };
     window.addEventListener('message', (event)=>MSG_BROKER.onMessage(event));
-   
-    //! main body.
+
+    //! cmd:hi handler in injected. (for content)
+    MSG_BROKER.setMessageHandle('hi', (data, msg)=>{
+        _log(NS, '! hi... data=', data);
+        return {name: 'injected', loc: location.href};
+    })
+
+    //! hello() to test.
     window.hello = function(name){
         name = name||'hello!'
         _log(NS, `hello ${name}!`);

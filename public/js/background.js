@@ -16,14 +16,14 @@ chrome.runtime.onMessage.addListener(function(message, sender, sendResponse) {
     //     console.log("sender.tab not defined.");
     // }
 
-    if (0 && $tab.id){
-        doSendMessage($tab.id)
-    } else if (sendResponse){
-        setTimeout(function(){
-            sendResponse({text: 'hello sender!'})
-        }, 2000);
-        return true;
-    }
+    // if (0 && $tab.id){
+    //     doSendMessage($tab.id)
+    // } else if (sendResponse){
+    //     setTimeout(function(){
+    //         sendResponse({text: 'hello sender!'})
+    //     }, 2000);
+    //     return true;
+    // }
 });
 
 //! for dev-tool: add `"devtools_page": "devtools.html",` in manifest.json
