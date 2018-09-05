@@ -12,7 +12,7 @@ chrome extension to communicate between websocket <-> background <-> tabs <-> co
 
 ## Background Console (백그라운드 디버깅)
 
-1. `chrome://extensions` -> Select "Lemon Chrome Bot" -> Inspect views `background page`.
+1. `chrome://extensions` -> Select `Lemon Chrome Bot` -> Inspect views `background page`.
 
 - page 의 `document.location`를 얻는 방법
 
