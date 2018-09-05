@@ -4,7 +4,6 @@
     "description": "크롬과 소켓 통신하여, 스마트한 브라우저 만들기!",
     "version": "1.0.0",
     "permissions": [
-        "tabs",
         "*://*/*",
         "contextMenus",
         "background",

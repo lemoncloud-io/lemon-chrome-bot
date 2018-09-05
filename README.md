@@ -1,18 +1,26 @@
 # lemon-chrome-bot
 
-chrome extension for lemon-bot.
+chrome extension to communicate between websocket <-> background <-> tabs <-> content <-> page.
 
 
-## 개발 환경
+## Dev Environ (개발 환경)
 
-1. 크롬 브라우저 에서 `chrome://extensions`을 연다.
-1. `Developer mode`를 활성화 시키고 --> `LOAD UNPACKED`를 선택하고 --> 이 프로젝트의 `build` 폴더를 선택. (주의! react 빌드 후)
-1. 개발자 콘솔 창을 열고 --> 페이지 릴로드 해보면 --> `lemon ready!`가 출력 되면 정상.
+1. Open Chrome browser with url `chrome://extensions`.
+1. Activate `Developer mode` --> Select `LOAD UNPACKED` --> Select `build` folder. (NOTE! run `npm run build` before)
+1. Open development console --> Reload Page --> Check `lemon ready!` message in console log.
 
 
-## 백그라운드 디버깅
+## Background Console (백그라운드 디버깅)
 
 1. `chrome://extensions` -> Select "Lemon Chrome Bot" -> Inspect views `background page`.
+
+- page 의 `document.location`를 얻는 방법
+
+```js
+// set default tab-id as 2 (maybe 2nd tab)
+> $LEM.tid=2   
+> $LEM.eval('document.location')
+```
 
 
 -----------------

@@ -84,12 +84,13 @@
                         if (ret && ret instanceof Promise){
                             return ret
                             .then(_ => {
-                                response.data = _;
+                                response.data = _ && JSON.stringify(_) || _;
                                 return response;
                             })
                             .catch(e => {
                                 _err(NS, '>> handle.ret.ERR!=', e);
-                                response.error = e;
+                                // response.error = e;          //WARN! error to serialize.
+                                response.error = {message: e.message, stack: e.stack};
                                 return response;
                             })
                             .then(res => {
@@ -97,10 +98,11 @@
                                 return res;
                             })
                         }
-                        response.data = ret;
+                        response.data = ret && JSON.stringify(ret) || ret;
                     } catch(e) {
                         _err(NS, '>> handle.ERR!=', e);
-                        response.error = e;
+                        // response.error = e;
+                        response.error = {message: e.message, stack: e.stack};
                     }
                     window.postMessage(response, '*');
                 })(handler);                
@@ -151,6 +153,11 @@
     MSG_BROKER.setMessageHandle('hi', (data, msg)=>{
         _log(NS, '! hi... data=', data);
         return {name: 'injected', loc: location.href};
+    })
+    MSG_BROKER.setMessageHandle('eval', (data, msg)=>{
+        _log(NS, '! eval... data=', data);
+        const text = data.text||'';
+        return eval(text);
     })
 
     //! hello() to test.

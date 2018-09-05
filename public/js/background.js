@@ -15,6 +15,7 @@
     if (!chrome) throw new Error('chrome is required!');
 
     //! message via content.js
+    const TAB_MAP = {};
     chrome.runtime.onMessage.addListener(function(message, sender, sendResponse) {
         message = message || {};
         sender = sender || {};
@@ -24,59 +25,96 @@
         const type  = message.type||'';
         const sid   = sender.id || '';
         const url   = sender.url || '';
-        const fid   = sender.frameId || '';             // if exists, then it must be internal frame like iframe.
+        const fid   = sender.frameId || 0;             // if exists, then it must be internal frame like iframe.
         const $tab  = sender.tab || {};
+        const tid   = $tab.id || 0;                    // starts from 1
         _log(NS, '>> sender-id =', sid);
-        _log(NS, '>> tab-id =', $tab.id, ', frame-id=', fid);
-    
-        // // Messages from content scripts should have sender.tab set
-        // if (sender.tab) {
-        //     var tabId = sender.tab.id;
-        //     if (tabId in connections) {
-        //         connections[tabId].postMessage(request);
-        //     } else {
-        //         console.log("Tab not found in connection list.");
-        //     }
-        // } else {
-        //     console.log("sender.tab not defined.");
-        // }
+        _log(NS, '>> tab-id =', tid, ', frame-id=', fid);
 
-        // if (0 && $tab.id){
-        //     doSendMessage($tab.id)
-        // } else if (sendResponse){
-        //     setTimeout(function(){
-        //         sendResponse({text: 'hello sender!'})
-        //     }, 2000);
-        //     return true;
-        // }
+        if (false){;
+        } else if (type == 'document.ready'){
+            if (!fid) TAB_MAP[tid] = {sid, url, fid, tid};
+            sendResponse({type:'ready', frameId: fid, tabId: tid})
+        } else if (type == 'window.unload'){
+            if (!fid) delete TAB_MAP[tid];
+        }
     });
     
-    //! for dev-tool: add `"devtools_page": "devtools.html",` in manifest.json
-    var connections = {};
-    chrome.runtime.onConnect.addListener(function (port) {
-        // Listen to messages sent from the DevTools page
-        port.onMessage.addListener(function (request) {
-            console.log('incoming message from dev tools page');
-            // Register initial connection
-            if (request.name == 'init') {
-                connections[request.tabId] = port;
-                port.onDisconnect.addListener(function () {
-                    delete connections[request.tabId];
-                });
-                return;
-            }
+    //! hello() to test.
+    window.hello = function(name){
+        name = name||'hello!'
+        _log(NS, `hello ${name}!`);
+        const tid = 2;
+        return chrome.tabs.sendMessage(tid, {cmd: name}, {frameId:0}, function(res) {
+            res && _inf(NS, '! tab['+tid+'].res =', res);
         });
-    });
-    
-    function doSendMessage(tid, message){
-        message = message || {content: "message"};
-        _log(NS, 'send['+tid+'] =', message);
-        chrome.tabs.sendMessage(tid, message, function(response) {
-            if(response) {
-                _log(NS, '! tab['+tid+'].res =', response);
-            }
+    }
+
+    //! navigate to url.
+    window.navigate = function(url, tid){
+        tid = tid||2;
+        _log(NS, 'tab['+tid+'].url :=', url);
+        return chrome.tabs.update(tid, {url}, function(tab) {
+            _log(NS, '>> updated.tab =', tab);
         });    
     }
+
+    //! main service object.
+    window.$LEM = {
+        tid: 2,                     // default tab-id.
+        //- send message to content, then get-back result.
+        sendMessage: function(id, cmd, data){
+            return new Promise((resolve, reject)=>{
+                id = id||this.tid;         //TODO - define target-id. (currently as tab-id yet)
+                const tid = id;
+                _log(NS, '> tab['+tid+'].send =', {cmd, data});
+                chrome.tabs.sendMessage(tid, {cmd, data}, {frameId:0}, function(res) {
+                    _log(NS, '> tab['+tid+'].res =', res);
+                    //! process Promised 
+                    if (res && res instanceof Promise){
+                        _log(NS, '>> promised! res=', res);
+                        return res
+                        .then(_ => resolve(_))
+                        .catch(e => reject(e))
+                    }
+                    //! normal process.
+                    res = res||{};
+                    const err = res.error;
+                    const data = res.data;
+                    err && _err(NS, '! tab['+tid+'].error =', err);
+                    !err && _inf(NS, '! tab['+tid+'].data =', data);
+                    return err ? reject(err) : resolve(data);
+                })
+            })
+        },
+        // hi()         ex: `$LEM.hi('hoho')`
+        hi: function(name, id = 0){
+            return this.sendMessage(id, 'hi', {name})
+        },
+        // evaluate()   
+        // ex: `$LEM.eval('document.location')`. 
+        // ex: `$LEM.eval('ADMIN.openProfile()')`. 
+        eval: function(text, id = 0){
+            return this.sendMessage(id, 'eval', {text})
+        },
+    }
+
+    // //! for dev-tool: add `"devtools_page": "devtools.html",` in manifest.json
+    // var connections = {};
+    // chrome.runtime.onConnect.addListener(function (port) {
+    //     // Listen to messages sent from the DevTools page
+    //     port.onMessage.addListener(function (request) {
+    //         console.log('incoming message from dev tools page');
+    //         // Register initial connection
+    //         if (request.name == 'init') {
+    //             connections[request.tabId] = port;
+    //             port.onDisconnect.addListener(function () {
+    //                 delete connections[request.tabId];
+    //             });
+    //             return;
+    //         }
+    //     });
+    // });
 
     //! socket-client.
     if(WebSocketClient)
@@ -86,12 +124,6 @@
         const WS_URL = 'ws://localhost:8080';
         //! open to server
         // $WSC.open(WS_URL);
-    }
-
-    //! hello() to test.
-    window.hello = function(name){
-        name = name||'hello!'
-        _log(NS, `hello ${name}!`);
     }
 
 })(window||global);

@@ -21,7 +21,8 @@ function injectJs(srcFile, id) {
 
 //! Main Function Body
 (function (window) {
-    const NS = 'CN';   
+    const NS = 'CN';
+    const thiz = {};   
 
     _log(NS, 'INFO! --------------- loading.');
     _log(NS, '> href =', location && location.href || 'N/A');
@@ -45,6 +46,10 @@ function injectJs(srcFile, id) {
         const msg = {type: 'document.ready', id: ID, href: location.href};
         chrome.runtime.sendMessage(msg, function(res) { 
             _inf(NS, '! cont.res =', res);
+            if (res && res.type == 'ready'){
+                delete res.type;
+                Object.assign(thiz, res);
+            }
         });
     })
     //! send unload.
@@ -55,13 +60,60 @@ function injectJs(srcFile, id) {
     });
 
     // message via background.js
+    const MSG_HANLDER = {
+        HANDLERS: {},
+        setMessageHandle: function(cmd, callback){
+            if (typeof callback == 'function'){
+                this.HANDLERS[cmd] = callback;
+            } else {
+                throw new Error('Invalid type:'+(typeof callback));
+            }
+        },
+    };
     chrome.runtime.onMessage.addListener(function(message, sender, sendResponse) {  
-        _log(NS, 'chrome.onMessage()... message=', message);
-        if(message.content) {
-            sendResponse({content: "response message"});
-            return true; // This is required by a Chrome Extension
-        }
-    })
+        message = message ||{};
+        sender = sender ||{};
+        _inf(NS, 'chrome.onMessage()...');
+        _log(NS, '> message =', message);
+        _log(NS, '> sender =', sender);
+
+        const cmd   = message.cmd||'';
+        const sid   = sender.id || '';
+
+        //! decode by cmd, and send response.
+        const handler = cmd && MSG_HANLDER.HANDLERS[cmd] || null;
+        handler && (()=>{
+            const res = {error:null, data:null};
+            try {
+                const ret = handler(message.data, message);
+                if (ret && ret instanceof Promise){
+                    return ret
+                    .then(_ => {
+                        // _inf(NS, '>> handle['+cmd+'].res =', _);
+                        res.data = _;
+                        return res;
+                    })
+                    .catch(e => {
+                        _err(NS, '>> handle['+cmd+'].err =', e);
+                        res.error = e;
+                        return res;
+                    })
+                    .then(res => {
+                        // _log(NS, '>> handle['+cmd+'].send =', res);
+                        sendResponse(res)
+                    })
+                }
+                res.data = ret;
+            } catch(e) {
+                _err(NS, '>> handle.ERR!=', e);
+                res.error = e;
+            }
+            sendResponse(res)
+        })();
+
+        //WARN! - should return 'true' for asynchronious response.
+        return true;
+    });
     
     // internal message broker to communicate with injected.js.
     const MSG_BROKER = {
@@ -83,13 +135,21 @@ function injectJs(srcFile, id) {
             const cmd = message.cmd||'';
             _inf(NS, '! message@'+(this.ID)+'/'+cmd+'/'+id+' =', message);
 
+            const _parse_data = (data)=>{
+                if (!data) return data;
+                if (typeof data == 'string' && data.startsWith('{') && data.endsWith('}')) return JSON.parse(data);
+                if (typeof data == 'string' && data.startsWith('[') && data.endsWith(']')) return JSON.parse(data);
+                return data;
+            }
+
             //! For response message.
             if (message.target === this.ID && message.mkey === this.MAGIC_KEY)
             {
+                _log(NS, '>> cb.cmd =', cmd);
                 const cb = this._CALLBACK[id];
                 this._CALLBACK[id] = undefined;
                 const err = message.error;
-                const data = message.data;
+                const data = _parse_data(message.data);
                 if (cb) cb(err, data);
             }
             //! For receiving message via injected.js (target must be "" or ID)
@@ -122,11 +182,11 @@ function injectJs(srcFile, id) {
                 const handler = cmd && this.HANDLERS[cmd] || null;
                 handler && ((handler)=>{
                     try {
-                        const ret = handler(message.data, message);
+                        const ret = handler(_parse_data(message.data), message);
                         if (ret && ret instanceof Promise){
                             return ret
                             .then(_ => {
-                                response.data = _;
+                                response.data = _ && JSON.stringify(_) || _;
                                 return response;
                             })
                             .catch(e => {
@@ -139,7 +199,7 @@ function injectJs(srcFile, id) {
                                 return res;
                             })
                         }
-                        response.data = ret;
+                        response.data = ret && JSON.stringify(ret) || ret;
                     } catch(e) {
                         _err(NS, '>> handle.ERR!=', e);
                         response.error = e;
@@ -189,6 +249,27 @@ function injectJs(srcFile, id) {
     };
     window.addEventListener('message', (event)=>MSG_BROKER.onMessage(event));
 
+    //! cmd handler via background.
+    MSG_HANLDER.setMessageHandle('hi', (data, msg)=>{
+        _log(NS, '! back.hi() data=', data);
+        return new Promise((resolve,reject)=>{
+            const res = Object.assign({msg: 'hi~ '+(data.name||'nobody')}, thiz);
+            resolve(res);
+        });
+    })
+    MSG_HANLDER.setMessageHandle('eval', (data, msg)=>{
+        _log(NS, '! back.eval() data=', data);
+        return MSG_BROKER.sendMessage('eval', data, 'IJ'+ID)
+        .then(_ => {
+            _log(NS, '>> eval.res =', _);
+            return _;
+        })
+        .catch(e => {
+            _err(NS, '>> eval.err =', e);
+            throw e;
+        })
+    })
+
     //! cmd:hi handler in content. (for injected)
     MSG_BROKER.setMessageHandle('hi', (data, msg)=>{
         _log(NS, '! hi... data=', data);
@@ -197,7 +278,7 @@ function injectJs(srcFile, id) {
                 resolve({name: 'waited!'})
             }, 1500)
         })
-    })
+    });
     MSG_BROKER.setMessageHandle('low', (data, msg)=>{
         _log(NS, '! low... data=', data);
 
@@ -213,6 +294,6 @@ function injectJs(srcFile, id) {
         }, 100)
 
         return {name: 'triggered to injected'};
-    })
+    });
         
 })(window||global);
