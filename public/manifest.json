@@ -16,6 +16,7 @@
     "background": {
         "scripts": [
             "js/bootloader.js",
+            "js/tcp-server.js",
             "js/socket.io.js",
             "js/background.js"
         ],

@@ -1,7 +1,9 @@
 /**
  * To support network Socket
  * 
- * !WARN! UNDER WORKING (FEASIBILITY TEST).
+ * !WARN! UNDER WORKING (FEASIBILITY TEST)!
+ * 
+ * !WARN! NO WAY TO OPEN TCP-SERVER IN EXTENSION @2018.09.05
  * 
  * add settings in manifest.json
  * ```
@@ -34,12 +36,18 @@
         // io.listen(3000);        
     }
 
-    if (true){
+    if (false){
+        // see https://stackoverflow.com/questions/11974487/socket-api-not-allowed-in-packaged-apps
         chrome.sockets.tcpServer.create({}, function(info){
             chrome.sockets.tcpServer.listen(info.socketId, 'localhost', 2000, function(result){
                 _inf(NS, '! socket.res =', result);
             });
         });
+    }
+
+    if (false){
+        //see https://github.com/GoogleChrome/chrome-app-samples/tree/master/samples/tcpserver
+
     }
 
     if (false) {

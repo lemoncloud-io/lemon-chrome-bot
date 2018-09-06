@@ -10,6 +10,11 @@ dist
 .serverless
 .idea
 
+# build
+build.crx
+build.pem
+
+
 # shared for vscode debug setting.
 #.vscode
 .DS_Store
