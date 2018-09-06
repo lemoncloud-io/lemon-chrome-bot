@@ -116,138 +116,190 @@
     //     });
     // });
 
-    //! socket-client.
-    if(WebSocketClient)
-    {
-        _log(NS, '! WebSocketClient()..');
-        var $WSC = new WebSocketClient();
-        const WS_URL = 'ws://localhost:8080';
-        //! open to server
-        // $WSC.open(WS_URL);
+    /**
+     * class: WebSocketClient
+     * - auto reconnect
+     * - see https://github.com/websockets/ws/wiki/Websocket-client-implementation-for-auto-reconnect
+     */
+    function WebSocketClient($param){
+        _inf('WebSocketClient()... ');
+        $param && _log('> param =', $param);
+        $param = $param||{};
+        this.id = $param.id||'WSC';
+        this.name = $param.name||'chrome-bot';
+        this.number = 0;	// Message number
+        this.autoReconnectInterval = 5*1000;	// ms
+        this.handlers = {};
+    }
+    WebSocketClient.prototype.open = function(url){
+        _log('open().......');
+        var thiz = this;
+        thiz.url = url;
+        thiz.instance = new WebSocket(url);
+        var onopen = function(){
+            thiz.onopen();
+        }
+        var onmessage = function(e, data){
+            data = data === undefined ? e.data||'' : data;
+            thiz.onmessage(data);
+        }
+        var onclose = function(e){
+            _log('!onclose =', e);
+            switch (e){
+            case 1000:	// CLOSE_NORMAL
+                _log("WebSocket: closed");
+                break;
+            default:	// Abnormal closure
+                thiz.reconnect(e);
+                break;
+            }
+            thiz.onclose(e);
+        }
+        var onerror = function(e){
+            _err('!onerror =', e);
+            switch (e && e.code){
+            case 'ECONNREFUSED':
+                thiz.reconnect(e);
+                break;
+            default:
+                thiz.onerror(e);
+                break;
+            }
+        }
+        
+        if (thiz.instance.on)
+        {
+            thiz.instance.on('open', onopen);
+            thiz.instance.on('message', onmessage); 
+            thiz.instance.on('close', onclose);
+            thiz.instance.on('error', onerror);
+        }
+
+        thiz.instance.onopen = onopen;
+        thiz.instance.onmessage = onmessage;
+        thiz.instance.onclose = onclose;
+        thiz.instance.onerror = onerror;
+    }
+    WebSocketClient.prototype.send = function(data, option){
+        try{
+            data = typeof data == 'object' ? JSON.stringify(data) : data;
+            this.instance.send(data, option);
+        }catch (e){
+            this.instance.emit('error', e);
+        }
+    }
+    WebSocketClient.prototype.reconnect = function(e){
+        _log(`WebSocketClient: retry in ${this.autoReconnectInterval}ms`,e);
+        var thiz = this;
+        thiz.instance.removeAllListeners && thiz.instance.removeAllListeners();
+        setTimeout(function(){
+            _log("WebSocketClient: reconnecting...");
+            thiz.open(thiz.url);
+        }, thiz.autoReconnectInterval);
     }
 
-})(window||global);
-
-
-/**
- * class: WebSocketClient
- * - auto reconnect
- * - see https://github.com/websockets/ws/wiki/Websocket-client-implementation-for-auto-reconnect
- */
-function WebSocketClient($param){
-    console.log('WebSocketClient()... param=', $param);
-    $param = $param||{};
-    this.id = $param.id||'WSC';
-    this.name = $param.name||'bot';
-	this.number = 0;	// Message number
-	this.autoReconnectInterval = 5*1000;	// ms
-}
-WebSocketClient.prototype.open = function(url){
-    console.log('open().......');
-    var thiz = this;
-	thiz.url = url;
-    // thiz.instance = typeof io != 'undefined' ? io(url) : new WebSocket(url);
-    thiz.instance = new WebSocket(url);
-    var onopen = function(e){
-        // console.log('!onopen =', e);
-		thiz.onopen();
-    }
-	var onmessage = function(e, data){
-        // console.log('!onmessage =', arguments);
-        data = data === undefined ? e.data||'' : data;
-		thiz.onmessage(data);
-    }
-    var onclose = function(e){
-        console.log('!onclose =', e);
-		switch (e){
-		case 1000:	// CLOSE_NORMAL
-			console.log("WebSocket: closed");
-			break;
-		default:	// Abnormal closure
-            thiz.reconnect(e);
-			break;
-		}
-		thiz.onclose(e);
-    }
-    var onerror = function(e){
-        console.log('!onerror =', e);
-		switch (e.code){
-		case 'ECONNREFUSED':
-            thiz.reconnect(e);
-			break;
-		default:
-            thiz.onerror(e);
-			break;
-		}
-	}
-    
-    if (thiz.instance.on)
-    {
-        thiz.instance.on('open', onopen);
-        thiz.instance.on('message', onmessage); 
-        thiz.instance.on('close', onclose);
-        thiz.instance.on('error', onerror);
-    }
-
-    thiz.instance.onopen = onopen;
-    thiz.instance.onmessage = onmessage;
-	thiz.instance.onclose = onclose;
-	thiz.instance.onerror = onerror;
-}
-WebSocketClient.prototype.send = function(data, option){
-	try{
-        data = typeof data == 'object' ? JSON.stringify(data) : data;
-		this.instance.send(data, option);
-	}catch (e){
-		this.instance.emit('error', e);
-	}
-}
-WebSocketClient.prototype.reconnect = function(e){
-	console.log(`WebSocketClient: retry in ${this.autoReconnectInterval}ms`,e);
-	var thiz = this;
-    thiz.instance.removeAllListeners && thiz.instance.removeAllListeners();
-	setTimeout(function(){
-		console.log("WebSocketClient: reconnecting...");
-		thiz.open(thiz.url);
-	}, thiz.autoReconnectInterval);
-}
-
-WebSocketClient.prototype.onmessage = function (message){
-    try{
-        if (message && typeof message == 'string'){
-            if (message.startsWith('{') || message.startsWith('[')){
-                var msg = JSON.parse(message);
-                var cmd = msg.cmd||'';
-                var param = msg.param||msg;
-                this.oncommand(cmd, param);
+    WebSocketClient.prototype.onmessage = function (message){
+        try{
+            if (message && typeof message == 'string'){
+                if (message.startsWith('{') || message.startsWith('[')){
+                    var $msg = JSON.parse(message);
+                    var cmd = $msg.cmd||'';
+                    var param = $msg.param||$msg.data||{};
+                    _inf('! onmessage. $msg=', $msg);
+                    this.oncommand(cmd, param, $msg);
+                } else {
+                    this.oncommand('msg', message);
+                }
             } else {
                 this.oncommand('msg', message);
             }
-        } else {
-            this.oncommand('msg', message);
+        }catch(e){
+            _err('!ERR =', e);
         }
-    }catch(e){
-        console.error('!ERR =', e);
     }
-}
 
-WebSocketClient.prototype.onopen = function(e){
-    console.log("WebSocketClient: open!");
-    var thiz = this;
-    thiz.send({cmd:'hello', did: 'chrome', name:thiz.name||'null', IP:'127.0.0.1'});
-}
+    WebSocketClient.prototype.onopen = function(e){
+        _log("WebSocketClient: open!");
+        var thiz = this;
+        thiz.send({cmd: 'hello', did: 'chrome', name:thiz.name, id: thiz.id});
+    }
+    WebSocketClient.prototype.onerror = function(e){
+        _log("WebSocketClient: error!");
+        _log('> error =', e);
+    }
+    WebSocketClient.prototype.onclose = function(e){
+        _log("WebSocketClient: closed!");	
+        _log('> close =', e);
+    }
+    WebSocketClient.prototype.oncommand = function(cmd, msg, $msg){
+        _log('WebSocketClient: oncommand!');
+        _log('> cmd =', cmd, ', msg=', msg);
+        const thiz = this;
+        const sendResponse = (res)=>{
+            res.id  = $msg&&$msg.id||0;
+            res.cmd = 'resp';           //WARN! must be 'resp'.
+            _inf(NS, '>> handle['+res.cmd+'/'+res.id+'].send =', res);
+            thiz.send(res);
+        }
+        //! decode by cmd, and send response.
+        const handler = cmd && thiz.handlers[cmd] || null;
+        handler && (()=>{
+            const res = {error:null, data:null};
+            try {
+                const ret = handler(msg, $msg);
+                if (ret && ret instanceof Promise){
+                    return ret
+                    .then(_ => {
+                        // _inf(NS, '>> handle['+cmd+'].res =', _);
+                        res.data = _;
+                        return res;
+                    })
+                    .catch(e => {
+                        _err(NS, '>> handle['+cmd+'].err =', e);
+                        res.error = e;
+                        return res;
+                    })
+                    .then(res => {
+                        // _log(NS, '>> handle['+cmd+'].send =', res);
+                        sendResponse(res)
+                    })
+                }
+                res.data = ret;
+            } catch(e) {
+                _err(NS, '>> handle.ERR!=', e);
+                res.error = e;
+            }
+            sendResponse(res);
+        })();        
+    }
+    WebSocketClient.prototype.setHandler = function(cmd, callback){
+        if (typeof callback != 'function') throw new Error('Invalid type:'+(typeof callback));
+        this.handlers[cmd] = callback;
+    }
 
-WebSocketClient.prototype.onerror = function(e){
-    console.log("WebSocketClient: error!");
-    console.log('> error =', e);
-}
-WebSocketClient.prototype.onclose = function(e){
-    console.log("WebSocketClient: closed!");	
-    console.log('> close =', e);
-}
-WebSocketClient.prototype.oncommand = function(cmd, msg){
-    // console.log("WebSocketClient: command!", arguments);
-    console.log('WebSocketClient: command!');
-    console.log('> cmd =', cmd, ', msg=', msg);
-}
-;
+    //////////////////////////////////////////
+    //! create socket-client.
+    if(WebSocketClient)
+    {
+        _log(NS, '! WebSocketClient()..');
+        const $WSC = new WebSocketClient();
+
+        //TODO - read url via configuration.
+        const WS_URL = 'ws://localhost:8080';
+        $WSC.open(WS_URL);
+
+        //! common handler.
+        $WSC.setHandler('hi', function(data){
+            return new Promise((resolve, reject)=>{
+                setTimeout(()=>{
+                    resolve({name:'chrome'})
+                }, 0);
+            })
+        })
+        $WSC.setHandler('eval', function(data){
+            return $LEM.eval(data);
+        })
+    }
+
+
+})(window||global);
