@@ -19,6 +19,14 @@ function injectJs(srcFile, id) {
     document.getElementsByTagName('head')[0].appendChild(scr);
 }
 
+function injectMeta(equiv, content) {
+    // <meta http-equiv="Content-Security-Policy" content="script-src https://code.jquery.com 'self';"></meta>
+    var meta = document.createElement('meta');
+    meta['http-equiv'] = equiv;
+    meta['content'] = content;
+    document.getElementsByTagName('head')[0].appendChild(meta);
+}
+
 //! Main Function Body
 (function (window) {
     const NS = 'CN';
@@ -33,6 +41,7 @@ function injectJs(srcFile, id) {
 
     //! load bootloader before document.ready.
     injectJs(chrome.extension.getURL('js/bootloader.js'));
+    // injectMeta('Content-Security-Policy', 'script-src chrome-extension://npadpbkpjiocfgklcochigcdpdekmjhn/js/injected.js \'self\';');
 
     // DO ON DUCEMENT.READY()
     $(document).ready(function() {
