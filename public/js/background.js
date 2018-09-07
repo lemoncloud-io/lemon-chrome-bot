@@ -273,7 +273,7 @@
 
 
     /**
-     * 
+     * on-messsage.
      * 
      * @param {*} message {cmd,param/data,tid?,fid?}
      */
@@ -283,6 +283,7 @@
                 if (typeof message == 'string' && message.startsWith('{') && message.endsWith('}')){
                     return JSON.parse(message);
                 }
+                if (message && typeof message == 'object') return message;
                 return {cmd:'msg', message: message}
             })();
             const cmd     = $msg.cmd||'';                    // command type
