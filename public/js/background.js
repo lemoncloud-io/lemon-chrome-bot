@@ -14,62 +14,99 @@
     const chrome = window.chrome;
     if (!chrome) throw new Error('chrome is required!');
 
-    //! message via content.js
-    const TAB_MAP = {};
-    chrome.runtime.onMessage.addListener(function(message, sender, sendResponse) {
-        message = message || {};
-        sender = sender || {};
-        _inf(NS, '! onMessage()... ');
-        _log(NS, '> message =', message);           // {type, id, ...}
-        // _log(NS, '> sender =', sender);             // {id: "cddemoiidgdpbclgfjgflmphkiajkifh", url: "https://github.com/meeeejin/srtmacro/blob/master/manifest.json", tab: {…}, frameId: 0}
-        const type  = message.type||'';
-        const sid   = sender.id || '';
-        const url   = sender.url || '';
-        const fid   = sender.frameId || 0;             // if exists, then it must be internal frame like iframe.
-        const $tab  = sender.tab || {};
-        const tid   = $tab.id || 0;                    // starts from 1
-        _log(NS, '>> sender-id =', sid);
-        _log(NS, '>> tab-id =', tid, ', frame-id=', fid);
-
-        if (false){;
-        } else if (type == 'document.ready'){
-            if (!fid) TAB_MAP[tid] = {sid, url, fid, tid};
-            sendResponse({type:'ready', frameId: fid, tabId: tid})
-        } else if (type == 'window.unload'){
-            if (!fid) delete TAB_MAP[tid];
-        }
-    });
-    
     //! hello() to test.
-    window.hello = function(name){
+    window.hello = function(name, tid, fid){
         name = name||'hello!'
-        _log(NS, `hello ${name}!`);
-        const tid = 2;
-        return chrome.tabs.sendMessage(tid, {cmd: name}, {frameId:0}, function(res) {
-            res && _inf(NS, '! tab['+tid+'].res =', res);
+        tid = tid||2;
+        fid = fid||0;
+        _log(NS, `hello ${name} @ ${tid}/${fid}`);
+        return chrome.tabs.sendMessage(tid, {cmd: name}, {frameId:fid}, function(res) {
+            _inf(NS, '> tab['+tid+'/'+fid+'].res =', res);
         });
     }
 
-    //! navigate to url.
-    window.navigate = function(url, tid){
-        tid = tid||2;
-        _log(NS, 'tab['+tid+'].url :=', url);
-        return chrome.tabs.update(tid, {url}, function(tab) {
-            _log(NS, '>> updated.tab =', tab);
-        });    
+    /**
+     * Configuration Storage
+     */
+    const $CONF = {
+        _storage: localStorage||{},
+        set : function(name, val){
+            this._storage.setItem(name, val);
+        },
+        get : function(name, def){
+            const val = this._storage.getItem(name);
+            return val === undefined || val === null ? def : val;
+        },
     }
 
-    //! main service object.
-    window.$LEM = {
-        tid: 2,                     // default tab-id.
+    /**
+     * TAB Manager
+     * - lookup by tab-id.
+     */
+    const $TAB_MGR = {
+        TAB_MAP : {},
+        //! message via content.js
+        onMessage : function(message, sender, sendResponse) {
+            const thiz = this;
+            message = message || {};
+            sender = sender || {};
+            _inf(NS, '! onMessage()... ');
+            _log(NS, '> message =', message);           // {type, id, ...}
+            // _log(NS, '> sender =', sender);             // {id: "cddemoiidgdpbclgfjgflmphkiajkifh", url: "https://github.com/meeeejin/srtmacro/blob/master/manifest.json", tab: {…}, frameId: 0}
+            const type  = message.type||'';
+            const sid   = sender.id || '';
+            const url   = sender.url || '';
+            const fid   = sender.frameId || 0;             // if exists, then it must be internal frame like iframe.
+            const $tab  = sender.tab || {};
+            const tid   = $tab.id || 0;                    // starts from 1
+            _log(NS, '>> sender-id =', sid);
+            _log(NS, '>> tab-id =', tid, ', frame-id=', fid);
+            if (false){;
+            } else if (type == 'document.ready'){
+                // if root window, fid should 0
+                if (!fid) {
+                    thiz.TAB_MAP[tid] = {sid, url, fid, tid, frames:{}};
+                } else {
+                    const tab = thiz.TAB_MAP[tid];
+                    if (tab && tab.frames) tab.frames[fid] = {sid, url, fid, tid};
+                }
+                // send back current info.
+                sendResponse({type:'ready', frameId: fid, tabId: tid})
+            } else if (type == 'window.unload'){
+                if (!fid) delete thiz.TAB_MAP[tid];
+            }
+            return true;
+        },
+        query : function(url){
+            const thiz = this;
+            _log(NS, '> query.url =', url);
+            url = url||'';
+            const list = Object.keys(thiz.TAB_MAP).reduce((L, tid)=>{
+                const tab = thiz.TAB_MAP[tid];
+                if (!tab) return L;
+                if (!url || (tab.url && tab.url.indexOf(url) >=0)){
+                    L.push(tab);
+                }
+                return L;
+            }, [])
+            return {list};
+        },
+    }
+        
+    /**
+     * Main Service Object
+     */
+    const $LEM = {
+        _tid: 2,                     // default tab-id.
         //- send message to content, then get-back result.
-        sendMessage: function(id, cmd, data){
+        sendMessage: function(id, cmd, data, fid){
+            fid = _$.N(fid, 0);
             return new Promise((resolve, reject)=>{
-                id = id||this.tid;         //TODO - define target-id. (currently as tab-id yet)
+                id = id||this._tid;         //TODO - define target-id. (currently as tab-id yet)
                 const tid = id;
-                _log(NS, '> tab['+tid+'].send =', {cmd, data});
-                chrome.tabs.sendMessage(tid, {cmd, data}, {frameId:0}, function(res) {
-                    _log(NS, '> tab['+tid+'].res =', res);
+                _log(NS, '> tab['+tid+'/'+fid+'].send =', {cmd, data});
+                chrome.tabs.sendMessage(tid, {cmd, data}, {frameId: fid}, function(res) {
+                    _log(NS, '> tab['+tid+'/'+fid+'].res =', res);
                     //! process Promised 
                     if (res && res instanceof Promise){
                         _log(NS, '>> promised! res=', res);
@@ -81,23 +118,59 @@
                     res = res||{};
                     const err = res.error;
                     const data = res.data;
-                    err && _err(NS, '! tab['+tid+'].error =', err);
-                    !err && _inf(NS, '! tab['+tid+'].data =', data);
+                    err && _err(NS, '! tab['+tid+'/'+fid+'].error =', err);
+                    !err && _inf(NS, '! tab['+tid+'/'+fid+'].data =', data);
                     return err ? reject(err) : resolve(data);
                 })
             })
         },
-        // hi()         ex: `$LEM.hi('hoho')`
+        //! hi()         ex: `$LEM.hi('hoho')`
         hi: function(name, id = 0){
             return this.sendMessage(id, 'hi', {name})
         },
-        // evaluate()   
+        //! set/get of tid. (if id = 0, returns current)
+        tid: function(id){
+            id = _$.N(id, 0);
+            if (id) {
+                this._tid = id;
+                $CONF.set('tid', id);
+            }
+            return this._tid;
+        },
+        listTabs: function(url){
+            return $TAB_MGR.query(url);
+        },
+        //! evaluate()   
         // ex: `$LEM.eval('document.location')`. 
         // ex: `$LEM.eval('ADMIN.openProfile()')`. 
-        eval: function(text, id = 0){
-            return this.sendMessage(id, 'eval', {text})
+        eval: function(text, tid = 0, fid = 0){
+            return this.sendMessage(tid, 'eval', {text}, fid)
+        },
+        //! navigate to url.
+        navigate : function(url, tid = 0){
+            tid = tid || this._tid;
+            _inf(NS, '! tab['+tid+'].url :=', url);
+            const param = typeof url == 'string' ? {url: url} : url;
+            return chrome.tabs.update(tid, param, function(tab) {
+                _log(NS, '>> updated.tab =', tab);
+            });
         },
     }
+
+    //! do initialize.
+    if (true)
+    {
+        // message listener.
+        chrome.runtime.onMessage.addListener(function(message, sender, sendResponse) {
+            return $TAB_MGR.onMessage(message, sender, sendResponse);
+        });
+
+        // initial tab-id.
+        const tid = $CONF.get('tid');
+        $LEM._tid = _$.N(tid, 2);
+        _inf(NS, '! inited. tid :=', $LEM.tid());
+    }
+
 
     // //! for dev-tool: add `"devtools_page": "devtools.html",` in manifest.json
     // var connections = {};
@@ -198,21 +271,25 @@
         }, thiz.autoReconnectInterval);
     }
 
+
+    /**
+     * 
+     * 
+     * @param {*} message {cmd,param/data,tid?,fid?}
+     */
     WebSocketClient.prototype.onmessage = function (message){
         try{
-            if (message && typeof message == 'string'){
-                if (message.startsWith('{') || message.startsWith('[')){
-                    var $msg = JSON.parse(message);
-                    var cmd = $msg.cmd||'';
-                    var param = $msg.param||$msg.data||{};
-                    _inf('! onmessage. $msg=', $msg);
-                    this.oncommand(cmd, param, $msg);
-                } else {
-                    this.oncommand('msg', message);
+            const $msg = (()=>{
+                if (typeof message == 'string' && message.startsWith('{') && message.endsWith('}')){
+                    return JSON.parse(message);
                 }
-            } else {
-                this.oncommand('msg', message);
-            }
+                return {cmd:'msg', message: message}
+            })();
+            const cmd     = $msg.cmd||'';                    // command type
+            const param   = $msg.param||$msg.data||{};       // message payload.
+            const tid     = _$.N($msg.tid, 0);               // tab-id
+            const fid     = _$.N($msg.fid, 0);               // frame-id
+            this.oncommand(cmd, param, tid, fid, $msg);
         }catch(e){
             _err('!ERR =', e);
         }
@@ -231,9 +308,9 @@
         _log("WebSocketClient: closed!");	
         _log('> close =', e);
     }
-    WebSocketClient.prototype.oncommand = function(cmd, msg, $msg){
+    WebSocketClient.prototype.oncommand = function(cmd, msg, tid, fid, $msg){
         _log('WebSocketClient: oncommand!');
-        _log('> cmd =', cmd, ', msg=', msg);
+        _log('> cmd =', cmd, ', msg=', msg, (tid||fid) ? '@'+tid+'/'+fid:'');
         const thiz = this;
         const sendResponse = (res)=>{
             res.id  = $msg&&$msg.id||0;
@@ -246,7 +323,7 @@
         handler && (()=>{
             const res = {error:null, data:null};
             try {
-                const ret = handler(msg, $msg);
+                const ret = handler(msg, tid, fid);
                 if (ret && ret instanceof Promise){
                     return ret
                     .then(_ => {
@@ -276,30 +353,46 @@
         if (typeof callback != 'function') throw new Error('Invalid type:'+(typeof callback));
         this.handlers[cmd] = callback;
     }
-
+    
     //////////////////////////////////////////
     //! create socket-client.
-    if(WebSocketClient)
+    const $WSC = (()=>{
+        if(!WebSocketClient) return null;
+        const wsc = new WebSocketClient();
+
+        const WS_URL = $CONF.get('ws.url', 'ws://localhost:8080');
+        _log(NS, '! WebSocketClient.open :=', WS_URL);
+        WS_URL && wsc.open(WS_URL);
+
+        return wsc;
+    })();
+
+    //! common client handler.
+    if($WSC)
     {
-        _log(NS, '! WebSocketClient()..');
-        const $WSC = new WebSocketClient();
-
-        //TODO - read url via configuration.
-        const WS_URL = 'ws://localhost:8080';
-        $WSC.open(WS_URL);
-
-        //! common handler.
-        $WSC.setHandler('hi', function(data){
+        //! test promised
+        $WSC.setHandler('hi', function(data, tid, fid){
             return new Promise((resolve, reject)=>{
                 setTimeout(()=>{
                     resolve({name:'chrome'})
                 }, 0);
             })
         })
-        $WSC.setHandler('eval', function(data){
-            return $LEM.eval(data);
+        //! tid(tab-id).
+        $WSC.setHandler('tid', function(data){
+            return $LEM.tid(data);
+        })
+        //! eval(text) in injected.js.
+        $WSC.setHandler('eval', function(data, tid, fid){
+            return $LEM.eval(data, tid, fid);
+        })
+        //! navigate to url
+        $WSC.setHandler('navigate', function(data, tid){
+            return $LEM.navigate(data, tid);
         })
     }
-
+    
+    //! export to public.
+    window.$LEM = $LEM;
 
 })(window||global);
