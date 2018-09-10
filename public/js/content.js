@@ -278,6 +278,19 @@ function injectMeta(equiv, content) {
             throw e;
         })
     })
+    MSG_HANLDER.setMessageHandle('jquery.text', (data, msg)=>{
+        _log(NS, '! back.jquery.text() data=', data);
+        const query = data && data.query || data;
+        return new Promise((resolve, reject)=>{
+            const $obj = $(query);
+            const list = [];
+            $obj.each(function(){
+                const $e = $(this);
+                list.push($e.text().trim());
+            })
+            resolve({query, list});
+        })
+    })
 
     //! cmd:hi handler in content. (for injected)
     MSG_BROKER.setMessageHandle('hi', (data, msg)=>{

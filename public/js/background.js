@@ -91,13 +91,23 @@
             }, [])
             return {list};
         },
+        get : function(tid, fid = 0){               // get tab-info by tid/fid
+            const T = thiz.TAB_MAP[tid];
+            if (!T) throw new Error('404 NOT FOUND - tid:'+tid);
+            if (fid){
+                const F = T.frames && T.frames[fid];
+                if (!T) throw new Error('404 NOT FOUND - tid:'+tid+', fid:'+fid);
+                return F;
+            }
+            return T;
+        },
     }
         
     /**
      * Main Service Object
      */
     const $LEM = {
-        _tid: 2,                     // default tab-id.
+        _tid: 1288,                     // default tab-id.
         //- send message to content, then get-back result.
         sendMessage: function(id, cmd, data, fid){
             fid = _$.N(fid, 0);
@@ -130,6 +140,7 @@
         },
         //! set/get of tid. (if id = 0, returns current)
         tid: function(id){
+            _log(NS, `! tid(${id})...`)
             id = _$.N(id, 0);
             if (id) {
                 this._tid = id;
@@ -138,6 +149,7 @@
             return this._tid;
         },
         listTabs: function(url){
+            _log(NS, `! listTabs(${url})...`)
             return $TAB_MGR.query(url);
         },
         //! evaluate()   
@@ -154,6 +166,10 @@
             return chrome.tabs.update(tid, param, function(tab) {
                 _log(NS, '>> updated.tab =', tab);
             });
+        },
+        //! run jQuery(query).each.
+        text: function(query, tid = 0, fid = 0){
+            return this.sendMessage(tid, 'jquery.text', {query}, fid)
         },
     }
 
@@ -201,7 +217,7 @@
         this.id = $param.id||'WSC';
         this.name = $param.name||'chrome-bot';
         this.number = 0;	// Message number
-        this.autoReconnectInterval = 5*1000;	// ms
+        this.autoReconnectInterval = 2.5*1000;	// ms
         this.handlers = {};
     }
     WebSocketClient.prototype.open = function(url){
@@ -287,7 +303,7 @@
                 return {cmd:'msg', message: message}
             })();
             const cmd     = $msg.cmd||'';                    // command type
-            const param   = $msg.param||$msg.data||{};       // message payload.
+            const param   = $msg.param||$msg.data||'';       // message payload.
             const tid     = _$.N($msg.tid, 0);               // tab-id
             const fid     = _$.N($msg.fid, 0);               // frame-id
             this.oncommand(cmd, param, tid, fid, $msg);
@@ -321,6 +337,7 @@
         }
         //! decode by cmd, and send response.
         const handler = cmd && thiz.handlers[cmd] || null;
+        if (!handler) return sendResponse({error:'404 NOT FOUND - cmd:'+cmd});
         handler && (()=>{
             const res = {error:null, data:null};
             try {
@@ -348,7 +365,7 @@
                 res.error = e;
             }
             sendResponse(res);
-        })();        
+        })();
     }
     WebSocketClient.prototype.setHandler = function(cmd, callback){
         if (typeof callback != 'function') throw new Error('Invalid type:'+(typeof callback));
@@ -379,9 +396,13 @@
                 }, 0);
             })
         })
-        //! tid(tab-id).
-        $WSC.setHandler('tid', function(data){
-            return $LEM.tid(data);
+        //! get/set tid(tab-id).
+        $WSC.setHandler('tid', function(tid = 0){
+            return $LEM.tid(tid);
+        })
+        //! list tabs.
+        $WSC.setHandler('tabs', function(url){
+            return $LEM.listTabs(url);
         })
         //! eval(text) in injected.js.
         $WSC.setHandler('eval', function(data, tid, fid){
@@ -390,6 +411,10 @@
         //! navigate to url
         $WSC.setHandler('navigate', function(data, tid){
             return $LEM.navigate(data, tid);
+        })
+        //! text() of jQuery
+        $WSC.setHandler('text', function(data, tid){
+            return $LEM.text(data, tid);
         })
     }
     
