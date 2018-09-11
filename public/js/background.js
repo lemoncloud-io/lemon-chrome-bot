@@ -10,6 +10,7 @@
 //! Main Function Body
 (function (window) {
     const NS = 'BG';
+    const CONF_DEFAULT_SERVER = 'ws://localhost:8080';
 
     const chrome = window.chrome;
     if (!chrome) throw new Error('chrome is required!');
@@ -147,6 +148,14 @@
                 $CONF.set('tid', id);
             }
             return this._tid;
+        },
+        //! set/get of server-url. (returns current)
+        server_url: function(url){
+            _log(NS, '! server-url :=', url);
+            if (url && typeof url == 'string' && url.startsWith('ws://')){
+                $CONF.set('ws.url', url);
+            }
+            return $CONF.get('ws.url', CONF_DEFAULT_SERVER);
         },
         listTabs: function(url){
             _log(NS, `! listTabs(${url})...`)
@@ -342,7 +351,9 @@
             const res = {error:null, data:null};
             try {
                 const ret = handler(msg, tid, fid);
-                if (ret && ret instanceof Promise){
+                if (ret === undefined || ret === null){
+                    return;
+                } else if (ret && ret instanceof Promise){
                     return ret
                     .then(_ => {
                         // _inf(NS, '>> handle['+cmd+'].res =', _);
@@ -378,7 +389,7 @@
         if(!WebSocketClient) return null;
         const wsc = new WebSocketClient();
 
-        const WS_URL = $CONF.get('ws.url', 'ws://localhost:8080');
+        const WS_URL = $CONF.get('ws.url', CONF_DEFAULT_SERVER);
         _log(NS, '! WebSocketClient.open :=', WS_URL);
         WS_URL && wsc.open(WS_URL);
 
@@ -395,6 +406,11 @@
                     resolve({name:'chrome'})
                 }, 0);
             })
+        })
+        //! on msg command. do nohting. (kind of ping)
+        $WSC.setHandler('msg', function(msg){
+            msg && _inf(NS, '! msg:', msg);
+            return undefined;
         })
         //! get/set tid(tab-id).
         $WSC.setHandler('tid', function(tid = 0){
