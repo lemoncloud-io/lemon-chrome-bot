@@ -11,6 +11,7 @@
 (function (window) {
     const NS = 'BG';
     const CONF_DEFAULT_SERVER = 'ws://localhost:8080';
+    const CONF_DEFAULT_NAME = 'chrome-bot';
 
     const chrome = window.chrome;
     if (!chrome) throw new Error('chrome is required!');
@@ -156,6 +157,14 @@
                 $CONF.set('ws.url', url);
             }
             return $CONF.get('ws.url', CONF_DEFAULT_SERVER);
+        },
+        //! set/get of client-name.
+        client_name: function(name){
+            _log(NS, '! client-name :=', name);
+            if (name && typeof name == 'string'){
+                $CONF.set('ws.name', name);
+            }
+            return $CONF.get('ws.name', CONF_DEFAULT_NAME);
         },
         listTabs: function(url){
             _log(NS, `! listTabs(${url})...`)
@@ -323,8 +332,8 @@
 
     WebSocketClient.prototype.onopen = function(e){
         _log("WebSocketClient: open!");
-        var thiz = this;
-        thiz.send({cmd: 'hello', did: 'chrome', name:thiz.name, id: thiz.id});
+        const thiz = this;
+        thiz.send({cmd: 'hello', did: 'chrome', name: thiz.name, id: thiz.id});
     }
     WebSocketClient.prototype.onerror = function(e){
         _log("WebSocketClient: error!");
@@ -387,11 +396,14 @@
     //! create socket-client.
     const $WSC = (()=>{
         if(!WebSocketClient) return null;
-        const wsc = new WebSocketClient();
+        const wsc = new WebSocketClient({
+            name: $LEM.client_name(),
+        });
 
-        const WS_URL = $CONF.get('ws.url', CONF_DEFAULT_SERVER);
-        _log(NS, '! WebSocketClient.open :=', WS_URL);
-        WS_URL && wsc.open(WS_URL);
+        // const WS_URL = $CONF.get('ws.url', CONF_DEFAULT_SERVER);
+        const url = $LEM.server_url();
+        _log(NS, '! WebSocketClient.open :=', url);
+        url && wsc.open(url);
 
         return wsc;
     })();

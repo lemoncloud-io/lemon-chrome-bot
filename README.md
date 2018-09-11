@@ -17,8 +17,16 @@ chrome extension to communicate between API <-> websocket <-> background <-> tab
 - TIP: page 의 `document.location`를 얻는 방법
 
 ```js
-// set default tab-id as 2 (maybe 2nd tab, find out from console log)
+// change client-name.
+> $LEM.client_name('chrome-bot')
+
+// switch default tab-id as 2 (maybe 2nd tab, find out from console log)
 > $LEM.tid(2)
+
+// say `hi~ there`
+> $LEM.hi('there')
+
+// evaluate script
 > $LEM.eval('document.location')
 ```
 
