@@ -2,6 +2,8 @@
 
 chrome extension to communicate between API <-> websocket <-> background <-> tabs <-> content <-> page.
 
+* [Chrome Extension Page](https://chrome.google.com/webstore/detail/ijaipdjjpjkmobigjpkidjeidfeiapem)
+
 
 ## Dev Environ (개발 환경)
 
