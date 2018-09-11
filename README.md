@@ -1,6 +1,6 @@
 # lemon-chrome-bot
 
-chrome extension to communicate between websocket <-> background <-> tabs <-> content <-> page.
+chrome extension to communicate between API <-> websocket <-> background <-> tabs <-> content <-> page.
 
 
 ## Dev Environ (개발 환경)
@@ -14,24 +14,28 @@ chrome extension to communicate between websocket <-> background <-> tabs <-> co
 
 1. `chrome://extensions` -> Select `Lemon Chrome Bot` -> Inspect views `background page`.
 
-- page 의 `document.location`를 얻는 방법
+- TIP: page 의 `document.location`를 얻는 방법
 
 ```js
-// set default tab-id as 2 (maybe 2nd tab)
-> $LEM.tid=2   
+// set default tab-id as 2 (maybe 2nd tab, find out from console log)
+> $LEM.tid(2)
 > $LEM.eval('document.location')
 ```
 
 
 -----------------
-# React App
+# Build Package
 
 - 관리 화면을 react로 만듬. 참고 [url](https://medium.com/@gilfink/building-a-chrome-extension-using-react-c5bfe45aaf36)
 
 ```bash
+# install react tool (one-time)
 $ npm install -g create-react-app
-$ create-react-app my-extension
-# copy all files in my-extension to ./
+
+# npm (one-time at least)
+$ npm install
+
+# bulid. 
 $ npm run build
 ```
 
