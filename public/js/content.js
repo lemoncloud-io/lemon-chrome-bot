@@ -12,10 +12,17 @@
  *
  * Copyright (C) 2018 LemonCloud Co Ltd. - All Rights Reserved.
  */
-function injectJs(srcFile, id) {
+function injectJs(srcFile, id, text, onload) {
     var scr = document.createElement('script');
-    scr.src = srcFile;
+    scr.type = 'text/javascript';
+    if (srcFile) scr.src = srcFile;
     if (id) scr.id = id;
+    //WARN! - seems not working.
+    if (text){
+        var $txt = document.createTextNode(text);
+        scr.appendChild($txt);
+    }
+    if (onload) scr.onload = onload;
     document.getElementsByTagName('head')[0].appendChild(scr);
 }
 
@@ -43,11 +50,14 @@ function injectMeta(equiv, content) {
     injectJs(chrome.extension.getURL('js/bootloader.js'));
     // injectMeta('Content-Security-Policy', 'script-src chrome-extension://npadpbkpjiocfgklcochigcdpdekmjhn/js/injected.js \'self\';');
 
+    //! load internal jQuery from injected page.
+    injectJs('', '', 'window._jquery_3_3_1 = "'+chrome.extension.getURL('js/jquery-3.3.1.slim.min.js')+'"');
+
     // DO ON DUCEMENT.READY()
     $(document).ready(function() {
         _log(NS, 'lemon ready!');
         _log(NS, '> loc=', document.location.href);
-    
+
         //! load injected script. (do expose command)
         injectJs(chrome.extension.getURL('js/injected.js'), ID);
 

@@ -9,6 +9,21 @@
  *
  * Copyright (C) 2018 LemonCloud Co Ltd. - All Rights Reserved.
  */
+//! inject script in self.
+function injectJs(srcFile, id, text, onload) {
+    var scr = document.createElement('script');
+    scr.type = 'text/javascript';
+    if (srcFile) scr.src = srcFile;
+    if (id) scr.id = id;
+    //WARN! - seems not working.
+    if (text){
+        var $txt = document.createTextNode(text);
+        scr.appendChild($txt);
+    }
+    if (onload) scr.onload = onload;
+    document.getElementsByTagName('head')[0].appendChild(scr);
+}
+
 //! Main Function Body
 (function (window) {
     const NS = 'IJ';
@@ -33,7 +48,16 @@
     //! prepare ID of self.
     const ID = getScriptID() || (12*10000 + Math.floor(Math.random()*10000));
     _log(NS, '> ID =', ID);
-   
+
+    //! load jQuery without conflict.
+    if (window._jquery_3_3_1){
+        injectJs(window._jquery_3_3_1, '', '' , function(){
+            console.log("------- jquery.loaded --------");
+            _$.$ = jQuery.noConflict(true);
+            delete window._jquery_3_3_1;
+        })
+    }
+
     // internal message broker to communicate with content.js.
     const MSG_BROKER = {
         ID : NS+ID,
@@ -157,7 +181,7 @@
     MSG_BROKER.setMessageHandle('eval', (data, msg)=>{
         _log(NS, '! eval... data=', data);
         const text = data.text||'';
-        return eval(text);
+        return window.eval(text);
     })
 
     //! hello() to test.
