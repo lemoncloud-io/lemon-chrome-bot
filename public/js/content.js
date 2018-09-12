@@ -301,6 +301,16 @@ function injectMeta(equiv, content) {
             resolve({query, list});
         })
     })
+    MSG_HANLDER.setMessageHandle('jquery.click', (data, msg)=>{
+        _log(NS, '! back.jquery.click() data=', data);
+        const query = data && data.query || data;
+        return new Promise((resolve, reject)=>{
+            const $obj = $(query);
+            const list = [];
+            $obj.click();
+            resolve({query, list});
+        })
+    })
 
     //! cmd:hi handler in content. (for injected)
     MSG_BROKER.setMessageHandle('hi', (data, msg)=>{

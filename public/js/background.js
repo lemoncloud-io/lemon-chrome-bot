@@ -192,6 +192,10 @@
         text: function(query, tid = 0, fid = 0){
             return this.sendMessage(tid, 'jquery.text', {query}, fid)
         },
+        //! trigger click() event of query.
+        click: function(query, tid = 0, fid = 0){
+            return this.sendMessage(tid, 'jquery.click', {query}, fid)
+        },
     }
 
     //! do initialize.
@@ -442,6 +446,10 @@
         //! text() of jQuery
         $WSC.setHandler('text', function(data, tid){
             return $LEM.text(data, tid);
+        })
+        //! click() of jQuery
+        $WSC.setHandler('click', function(data, tid){
+            return $LEM.click(data, tid);
         })
     }
     
