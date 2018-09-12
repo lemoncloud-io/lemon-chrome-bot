@@ -181,9 +181,12 @@
             tid = tid || this._tid;
             _inf(NS, '! tab['+tid+'].url :=', url);
             const param = typeof url == 'string' ? {url: url} : url;
-            return chrome.tabs.update(tid, param, function(tab) {
-                _log(NS, '>> updated.tab =', tab);
-            });
+            return new Promise((resolve, reject)=>{
+                chrome.tabs.update(tid, param, function(tab) {
+                    _log(NS, '>> updated.tab =', tab);
+                    resolve(tab);
+                });
+            })
         },
         //! run jQuery(query).each.
         text: function(query, tid = 0, fid = 0){
@@ -413,11 +416,7 @@
     {
         //! test promised
         $WSC.setHandler('hi', function(data, tid, fid){
-            return new Promise((resolve, reject)=>{
-                setTimeout(()=>{
-                    resolve({name:'chrome'})
-                }, 0);
-            })
+            return $LEM.hi(data);
         })
         //! on msg command. do nohting. (kind of ping)
         $WSC.setHandler('msg', function(msg){
