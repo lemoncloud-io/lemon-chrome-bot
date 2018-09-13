@@ -5,8 +5,6 @@
  * Will be loaded at `document_end`.
  * 
  * 
- * 
- * 
  * author: Steve <steve@lemoncloud.io>
  * date : 2018-08-31
  *
@@ -61,8 +59,27 @@ function injectMeta(equiv, content) {
         //! load injected script. (do expose command)
         injectJs(chrome.extension.getURL('js/injected.js'), ID);
 
-        //! send ready.
+        //! prepare ready message.
         const msg = {type: 'document.ready', id: ID, href: location.href};
+        msg.title = $('title').text();
+        //! ogtag information.
+        $('meta').each(function(){
+            const $e = $(this);
+            const prp = $e.attr('property')||'';
+            const cnt = $e.attr('content')||'';
+            if (prp == 'og:image') msg.image = cnt;
+            else if (prp == 'og:description') msg.description = cnt;
+            else if (prp == 'og:title') msg.title = cnt;
+        })
+        //! youtube image
+        if (msg.href && msg.href.indexOf('youtube.com') > 0){
+            const a = msg.href.indexOf('v='), b = msg.href.indexOf('&', a+1);
+            let id = a > 0 ? (b > a ? msg.href.substring(a+2,b) : msg.href.substring(a+2)) : '';
+            id = id.split('#')[0]||'';
+            msg.image = msg.image||(id ? ('https://img.youtube.com/vi/'+id+'/mqdefault.jpg'):'');
+        }
+
+        //! send message to background.
         chrome.runtime.sendMessage(msg, function(res) { 
             _inf(NS, '! cont.res =', res);
             if (res && res.type == 'ready'){

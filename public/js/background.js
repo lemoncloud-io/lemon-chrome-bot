@@ -47,6 +47,7 @@
      */
     const $TAB_MGR = {
         TAB_MAP : {},
+        handlers : {},
         //! message via content.js
         onMessage : function(message, sender, sendResponse) {
             const thiz = this;
@@ -63,6 +64,37 @@
             const tid   = $tab.id || 0;                    // starts from 1
             _log(NS, '>> sender-id =', sid);
             _log(NS, '>> tab-id =', tid, ', frame-id=', fid);
+
+            //! decode by cmd, and send response.
+            const cmd = type||'';
+            const handler = cmd && thiz.handlers[cmd] || null;
+            handler && ((callback)=>{
+                const res = {error:null, data:null};
+                try {
+                    const ret = handler(message, tid, fid);
+                    if (ret && ret instanceof Promise){
+                        return ret
+                        .then(_ => {
+                            res.data = _;
+                            return res;
+                        })
+                        .catch(e => {
+                            res.error = e;
+                            return res;
+                        })
+                        .then(res => {
+                            callback && callback(res.error, res.data);
+                        })
+                    }
+                    res.data = ret;
+                } catch(e) {
+                    _err(NS, '>> handle.ERR!=', e);
+                    res.error = e;
+                }
+                callback && callback(res.error, res.data);
+            })();
+
+            //! basic processing
             if (false){;
             } else if (type == 'document.ready'){
                 // if root window, fid should 0
@@ -77,8 +109,17 @@
             } else if (type == 'window.unload'){
                 if (!fid) delete thiz.TAB_MAP[tid];
             }
+
+            //! should return true.
             return true;
         },
+        setHandler: function(cmd, callback){
+            const thiz = this;
+            if (typeof callback != 'function') throw new Error('Invalid type:'+(typeof callback));
+            if (thiz.handlers[cmd]) throw new Error('Multiple handler of tab.cmd:'+cmd);
+            thiz.handlers[cmd] = callback;
+        },
+        //! find tab where has url
         query : function(url){
             const thiz = this;
             _log(NS, '> query.url =', url);
@@ -93,6 +134,7 @@
             }, [])
             return {list};
         },
+        //! get Tab by id.
         get : function(tid, fid = 0){               // get tab-info by tid/fid
             const T = thiz.TAB_MAP[tid];
             if (!T) throw new Error('404 NOT FOUND - tid:'+tid);
@@ -450,6 +492,16 @@
         //! click() of jQuery
         $WSC.setHandler('click', function(data, tid){
             return $LEM.click(data, tid);
+        })
+
+        //! receive onready.
+        $TAB_MGR.setHandler('document.ready', function(msg, tid = 0, fid = 0){
+            _log(NS, '!! document.ready().. TAB='+(tid||0)+':'+(fid||0)+', msg=', msg);
+
+            // send message back to server only if current tid is same.
+            if (tid == $LEM.tid() && !fid){
+                $WSC.send({cmd:'document.ready', data: msg});
+            }
         })
     }
     

@@ -3,7 +3,7 @@
     "name": "Lemon Chrome Bot",
     "description": "크롬과 소켓 통신하여, 스마트한 브라우저 만들기!",
     "author": "Steve (steve@lemoncloud.io)",
-    "version": "1.0.3",
+    "version": "1.0.4",
     "homepage_url": "https://github.com/lemoncloud-io/lemon-chrome-bot",
     "permissions": [
         "*://*/*",
