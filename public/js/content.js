@@ -60,7 +60,8 @@ function injectMeta(equiv, content) {
         injectJs(chrome.extension.getURL('js/injected.js'), ID);
 
         //! prepare ready message.
-        const msg = {type: 'document.ready', id: ID, href: location.href};
+        const href = document.location.href||'';
+        const msg = {type: 'document.ready', id: ID, href: href};
         msg.title = $('title').text();
         //! ogtag information.
         $('meta').each(function(){
@@ -72,7 +73,7 @@ function injectMeta(equiv, content) {
             else if (prp == 'og:title') msg.title = cnt;
         })
         //! youtube image
-        if (msg.href && msg.href.indexOf('youtube.com') > 0){
+        if (href && href.indexOf('youtube.com/') > 0){
             const a = msg.href.indexOf('v='), b = msg.href.indexOf('&', a+1);
             let id = a > 0 ? (b > a ? msg.href.substring(a+2,b) : msg.href.substring(a+2)) : '';
             id = id.split('#')[0]||'';
@@ -87,6 +88,34 @@ function injectMeta(equiv, content) {
                 Object.assign(thiz, res);
             }
         });
+
+        //ONLY for youtube. (다음 동영상 재생 버튼일 보일때를 기다려서, 정보 읽어옴.)
+        //html찾기: $('.ytp-suggestion-set .ytp-upnext-autoplay-icon').parent().clone().wrapAll("<div/>").parent().html()
+        if (href.indexOf('youtube.com/')>0){
+            var UPNEXT = '';
+            var HANDLE = setInterval(()=>{
+                const $e = $('.ytp-suggestion-set .ytp-upnext-autoplay-icon');
+                if ($e.length > 0){
+                    // clearInterval(HANDLE);       //WARN! do not stop interval due to dynamic loading.
+                    const $p = $e.parent();
+                    const title = $p.find('.ytp-upnext-title').text();
+                    const changed = UPNEXT != title;
+                    if (!changed) return;
+                    UPNEXT = title;
+                    
+                    const image = ($p.find('.ytp-cued-thumbnail-overlay-image').eq(0).css('background-image')||'').split('?')[0]||'';
+                    const author = $p.find('.ytp-upnext-author').text();
+                    const href = $p.find('.ytp-upnext-autoplay-icon').attr('href')||'';
+                    _inf(NS, '>>> NEXT =', title);
+                    _log(NS, '>>> QUEUED: title=', title, ', image=', image);
+                    msg.type = 'youtube.upnext';
+                    Object.assign(msg, {title, image, href, author});
+                    href && chrome.runtime.sendMessage(msg, (res)=>{
+                        _inf(NS, '> youtube.next.res =', res);
+                    });
+                }
+            }, 300);
+        }        
     })
     //! send unload.
     $(window).on('unload', function(){

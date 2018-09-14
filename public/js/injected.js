@@ -55,6 +55,13 @@ function injectJs(srcFile, id, text, onload) {
             console.log("------- jquery.loaded --------");
             _$.$ = jQuery.noConflict(true);
             delete window._jquery_3_3_1;
+
+            //! document.ready event.
+            _$.$(document).ready(function() {
+                _inf(NS, 'injected.doc ready!');
+                const href = document.location.href||'';
+                _log(NS, '> href =', href);
+            });
         })
     }
 

@@ -497,10 +497,15 @@
         //! receive onready.
         $TAB_MGR.setHandler('document.ready', function(msg, tid = 0, fid = 0){
             _log(NS, '!! document.ready().. TAB='+(tid||0)+':'+(fid||0)+', msg=', msg);
-
-            // send message back to server only if current tid is same.
             if (tid == $LEM.tid() && !fid){
                 $WSC.send({cmd:'document.ready', data: msg});
+            }
+        })
+        //! only for youtube
+        $TAB_MGR.setHandler('youtube.upnext', function(msg, tid = 0, fid = 0){
+            _log(NS, '!! youtube.upnext().. TAB='+(tid||0)+':'+(fid||0)+', msg=', msg);
+            if (tid == $LEM.tid() && !fid){
+                $WSC.send({cmd:'youtube.upnext', data: msg});
             }
         })
     }
